@@ -1,0 +1,15 @@
+{
+  "feature_columns": [
+    "MonthlyIncome",
+    "PercentSalaryHike",
+    "YearsSinceLastPromotion",
+    "YearsAtCompany",
+    "OverTime_flag",
+    "WorkLifeBalance",
+    "JobInvolvement",
+    "JobSatisfaction",
+    "EnvironmentSatisfaction",
+    "JobLevel",
+    "TotalWorkingYears"
+  ]
+}
