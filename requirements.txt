@@ -1,0 +1,35 @@
+# Core
+pandas
+numpy
+scikit-learn
+joblib
+lifelines
+
+# Database
+pymongo
+certifi
+sqlalchemy
+pymysql
+mysql-connector-python
+
+# ML / NLP
+lightgbm
+sentence-transformers
+transformers
+torch
+tqdm
+
+# API / Web
+requests
+python-dotenv
+google-generativeai
+bcrypt
+fastapi
+uvicorn[standard]
+gunicorn
+
+# Claude API
+anthropic
+
+# Dev / Test
+pytest

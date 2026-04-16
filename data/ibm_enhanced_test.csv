@@ -1,0 +1,6 @@
+employee_id,role_name,current_salary,BusinessTravel,DailyRate,Department,DistanceFromHome,Education,EducationField,HourlyRate,JobInvolvement,JobLevel,JobRole,MaritalStatus,MonthlyRate,NumCompaniesWorked,Over18,PercentSalaryHike,PerformanceRating,StockOptionLevel,TotalWorkingYears,TrainingTimesLastYear,YearsAtCompany,YearsInCurrentRole,YearsWithCurrManager,Market_Median_2026,Internal_Salary_Rank,Performance_Consistency
+EMP001,Software_Developer_Seattle,145000,1,1102,1,1,2,1,94,3,2,7,2,19479,8,1,11,3,0,8,0,6,4,0,0,0.5,3
+EMP002,Data_Scientist_Seattle,168000,2,1218,1,2,4,1,52,2,3,2,1,24907,1,1,23,4,1,10,3,5,2,3,0,0.8,4
+EMP003,Software_Developer_Seattle,132000,1,1373,1,2,2,2,92,2,1,7,2,2396,1,1,15,3,0,7,3,0,0,0,0,0.3,3
+EMP004,Data_Scientist_Seattle,185000,1,890,1,7,4,1,56,3,4,2,1,23159,1,1,11,3,1,12,3,8,7,0,0,0.9,3
+EMP005,Software_Developer_Seattle,155000,2,591,1,2,1,1,40,3,2,7,1,12290,9,1,12,3,1,6,3,2,2,2,0,0.4,3
