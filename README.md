@@ -8,7 +8,7 @@ RetentionAgent is an end-to-end people analytics system that combines machine le
 
 | Component | URL |
 |-----------|-----|
-| Frontend (GitHub Pages) | https://wan519.github.io/6600 |
+| Frontend (GitHub Pages) | https://wan519.github.io/RetainIQ/ |
 | Backend API (Render) | https://retentionagent.onrender.com |
 
 **Demo accounts**
@@ -145,7 +145,7 @@ graph TD
 - **Three-agent ML pipeline** — Equity Agent (LightGBM), Retention Agent (Cox survival model), and Emotion Agent (NLP) run sequentially and write enriched results to MongoDB
 - **AI retention recommendations** — Claude API (tool-use agentic loop) generates per-employee retention plans; an adversarial Critic Agent audits quality and forces revision before saving
 - **Role-based access control** — HR sees the full workforce; managers see only their department's high/mid-risk employees
-- **Interactive web dashboard** — employee risk cards with attrition gauge, salary gap data, AI recommendations, and key concern breakdowns
+- **Interactive web dashboard** — five-page single-page app (Home → Login → Portal → HR Dashboard / Manager View); HR view shows a ring gauge per employee (0–100% attrition score, labelled Critical ≥ 80 % / High ≥ 65 % / Moderate < 65 %), three summary tiles (Monitored employees, Critical-Risk count, Avg Market Gap), and an expandable detail panel (Compensation Plan, Risk Details, Key Concerns); Manager view shows a progress-bar risk indicator with AI-generated retention recommendations and urgency timeline per employee
 
 ---
 
@@ -261,7 +261,7 @@ npm run dev
 
 | Area | Details |
 |------|---------|
-| FastAPI Backend | `/api/login` and `/api/employees` endpoints, role-based data filtering, MongoDB query logic (`api/server.py`) |
+| FastAPI Backend | `/api/login` (POST) and `/api/employees?role=hr\|manager&dept=X&month=YYYY-MM` (GET) endpoints, role-based data filtering, MongoDB query logic (`api/server.py`) |
 | Mock Data Scripts | Employee dataset generation and MySQL seeding (`scripts/MockData.py`, `scripts/database_mysql.py`) |
 | Deployment | GitHub Pages (frontend), Render (FastAPI backend), CORS and environment configuration |
 | Data Pipeline Support | CSV preprocessing, MongoDB upload scripts, dataset management (`scripts/`) |
@@ -302,7 +302,7 @@ The planned upgrade is to store all user accounts, hashed passwords, roles, and 
 | LLM | Claude API — `claude-opus-4-6` (Anthropic) |
 | Backend | FastAPI, pymongo, mysql-connector-python |
 | Database | MongoDB (risk scores & recommendations), MySQL (user & employee data) |
-| Frontend | React 18, Vite |
+| Frontend | React 19, Vite |
 | Deployment | GitHub Pages, Render |
 
 ---
