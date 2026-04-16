@@ -75,14 +75,14 @@ def run_retention_agent(ai_mode: bool = True):
                  If False, use SalaryRiskAgent directly (no Claude call).
     """
     if ai_mode:
-        from agents.retention.ai_salary_risk_agent import AISalaryRiskAgent
+        from agents.retention.retention_agent import RetentionAgent
         print("\n=== Step 2: AI Salary Risk Agent (Claude-enriched) ===")
-        agent = AISalaryRiskAgent(RETENTION_MODEL, RETENTION_FEATURES)
+        agent = RetentionAgent(RETENTION_MODEL, RETENTION_FEATURES)
         agent.run(HR_TEST_CSV)
     else:
-        from agents.retention.retention_agent_v1 import SalaryRiskAgent, run_salary_risk_agent
+        from agents.retention.retention_agent import run_retention_agent as _run_retention
         print("\n=== Step 2: Salary Risk Agent (scoring only) ===")
-        run_salary_risk_agent()
+        _run_retention()
 
 
 def run_emotion_agent(company_name: str, data_path: str):
@@ -93,12 +93,9 @@ def run_emotion_agent(company_name: str, data_path: str):
         company_name (str): Company to analyze (must match 'firm' column in the CSV).
         data_path (str): Path to the Glassdoor reviews CSV file.
     """
-    from tools.emotion_tool import GlassdoorEmotionAgent
-    from agents.emotion.emotion_agent import EmotionOrchestrator
+    from agents.emotion.emotion_agent import run_emotion_agent as _run_emotion
     print("\n=== Step 3: Emotion Agent ===")
-    agent = GlassdoorEmotionAgent()
-    orchestrator = EmotionOrchestrator(agent)
-    report = orchestrator.check_and_analyze(company_name, data_path)
+    report = _run_emotion(company_name, data_path)
     print(report)
 
 

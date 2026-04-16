@@ -9,7 +9,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from unittest.mock import MagicMock, patch
-from agents.retention.retention_agent_v1 import RetentionAgentV1, ensure_columns
+from agents.retention.risk_scorer import RiskScorer as RetentionAgentV1, ensure_columns
 
 
 # ---------------------------------------------------------------------------
