@@ -31,5 +31,8 @@ gunicorn
 # Claude API
 anthropic
 
+# LangGraph
+langgraph
+
 # Dev / Test
 pytest

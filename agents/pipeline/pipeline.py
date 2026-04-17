@@ -1,23 +1,22 @@
 """
 agents/pipeline/pipeline.py
 
-Orchestrator for the retention recommendation pipeline.
+Full end-to-end retention pipeline using LangGraph.
 
-Coordinates RecommendationAgent (generator) and RecommendationAuditAgent (critic)
-with a retry loop of up to MAX_AUDIT_ATTEMPTS before forcing a save.
+Graph topology:
+    START → equity → retention ─┐
+    START → emotion            ─┴→ generate → audit → [_should_continue]
+                                                          "save"       → save → END
+                                                          "regenerate" → prepare_feedback → generate
 
-Designed to be LangGraph-ready: each step maps directly to a node,
-and the conditional logic maps to edges.
-
-Current (plain Python):
-    run_pipeline(month) → loops manually
-
-Future (LangGraph):
-    graph = StateGraph(PipelineState)
-    graph.add_node("generate", recommendation_agent.run)
-    graph.add_node("audit",    recommendation_audit_agent.run)
-    graph.add_node("save",     save_node)
-    graph.add_conditional_edges("audit", should_continue, {...})
+Nodes:
+    equity           — LightGBM salary fair-value  → MongoDB: Equity_Predictions
+    retention        — Cox survival + Claude HR     → MongoDB: Risk
+    emotion          — NLP sentiment + Claude       → MongoDB: Emotion
+    generate         — Claude recommendation gen    (reads Risk + Emotion + employee_comment)
+    audit            — Adversarial Claude critic    (up to MAX_AUDIT_ATTEMPTS rounds)
+    prepare_feedback — injects revision_instructions into state before regeneration
+    save             — persist approved recs        → MongoDB: retention_recommendations
 
 Usage:
     python -m agents.pipeline.pipeline --month 2026-04
@@ -32,6 +31,7 @@ from typing import TypedDict
 import certifi
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from langgraph.graph import StateGraph, START, END
 
 import agents.recommendation.recommendation_agent as recommendation_agent
 import agents.recommendation_audit.recommendation_audit_agent as recommendation_audit_agent
@@ -40,14 +40,22 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 load_dotenv(_PROJECT_ROOT / "config.env")
 
 MAX_AUDIT_ATTEMPTS = 3
+_DEFAULT_HR_CSV      = str(_PROJECT_ROOT / "data" / "ibm_enhanced_test.csv")
+_DEFAULT_REVIEWS_CSV = str(_PROJECT_ROOT / "data" / "mock_reviews.csv")
+_MODEL_DIR           = _PROJECT_ROOT / "models"
 
 
 # ---------------------------------------------------------------------------
-# State definition  (maps directly to LangGraph StateGraph schema)
+# State definition
 # ---------------------------------------------------------------------------
 
 class PipelineState(TypedDict, total=False):
+    # Config — passed through all nodes unchanged
     month:           str
+    company:         str
+    hr_csv:          str
+    reviews_csv:     str
+    # Recommendation pipeline state
     recommendations: list[dict]
     audit_result:    dict
     audit_attempts:  int
@@ -55,7 +63,71 @@ class PipelineState(TypedDict, total=False):
 
 
 # ---------------------------------------------------------------------------
-# Save node
+# Stage nodes (1–3)
+# ---------------------------------------------------------------------------
+
+def _equity_node(state: PipelineState) -> PipelineState:
+    """Stage 1 — LightGBM salary equity scoring → MongoDB: Equity_Predictions."""
+    from agents.equity.equity_agent import EquityAgent
+
+    hr_csv       = state.get("hr_csv", _DEFAULT_HR_CSV)
+    equity_model = str(_MODEL_DIR / "agent_salary_regressor.pkl")
+
+    if not Path(equity_model).exists():
+        print(f"[equity] SKIP — model not found: {equity_model}")
+        return state
+    if not Path(hr_csv).exists():
+        print(f"[equity] SKIP — HR CSV not found: {hr_csv}")
+        return state
+
+    EquityAgent(model_path=equity_model).run_analysis_pipeline(hr_csv)
+    print("[equity] Complete → MongoDB: Equity_Predictions")
+    return state
+
+
+def _retention_node(state: PipelineState) -> PipelineState:
+    """Stage 2 — Cox survival model + Claude HR insights → MongoDB: Risk."""
+    from agents.retention.retention_agent import RetentionAgent
+
+    hr_csv       = state.get("hr_csv", _DEFAULT_HR_CSV)
+    model_pkl    = str(_MODEL_DIR / "cox_retention_v1.pkl")
+    feature_json = str(_MODEL_DIR / "cox_retention_v1_features.json")
+
+    if not Path(model_pkl).exists():
+        print(f"[retention] SKIP — model not found: {model_pkl}")
+        return state
+    if not Path(feature_json).exists():
+        print(f"[retention] SKIP — features JSON not found: {feature_json}")
+        return state
+    if not Path(hr_csv).exists():
+        print(f"[retention] SKIP — HR CSV not found: {hr_csv}")
+        return state
+
+    agent = RetentionAgent(model_path=model_pkl, feature_json_path=feature_json)
+    docs  = agent.run(hr_csv)
+    print(f"[retention] Complete — {len(docs)} records → MongoDB: Risk")
+    return state
+
+
+def _emotion_node(state: PipelineState) -> PipelineState:
+    """Stage 3 — NLP sentiment + Claude report → MongoDB: Emotion."""
+    from agents.emotion.emotion_agent import run_emotion_agent
+
+    reviews_csv = state.get("reviews_csv", _DEFAULT_REVIEWS_CSV)
+    company     = state.get("company", "Apple")
+    month       = state.get("month", "")
+
+    if not Path(reviews_csv).exists():
+        print(f"[emotion] SKIP — reviews CSV not found: {reviews_csv}")
+        return state
+
+    run_emotion_agent(company_name=company, csv_path=reviews_csv, month=month)
+    print("[emotion] Complete → MongoDB: Emotion")
+    return state
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 nodes — recommendation + audit loop
 # ---------------------------------------------------------------------------
 
 def _save_node(state: PipelineState) -> PipelineState:
@@ -88,14 +160,18 @@ def _save_node(state: PipelineState) -> PipelineState:
     return state
 
 
+def _prepare_feedback_node(state: PipelineState) -> PipelineState:
+    """Extract revision instructions from audit result into the feedback field."""
+    feedback = state.get("audit_result", {}).get("revision_instructions", "")
+    return {**state, "feedback": feedback}
+
+
 # ---------------------------------------------------------------------------
-# Conditional edge  (maps to LangGraph conditional_edges)
+# Conditional edge
 # ---------------------------------------------------------------------------
 
 def _should_continue(state: PipelineState) -> str:
     """
-    Routing logic after each audit.
-
     Returns:
         "save"       — approved or max attempts reached
         "regenerate" — audit failed, retry allowed
@@ -117,39 +193,74 @@ def _should_continue(state: PipelineState) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Build and compile the LangGraph
+# ---------------------------------------------------------------------------
+
+def _build_graph():
+    graph = StateGraph(PipelineState)
+
+    # Stage 1–3 nodes
+    graph.add_node("equity",            _equity_node)
+    graph.add_node("retention",         _retention_node)
+    graph.add_node("emotion",           _emotion_node)
+    # Stage 4 nodes
+    graph.add_node("generate",          recommendation_agent.run)
+    graph.add_node("audit",             recommendation_audit_agent.run)
+    graph.add_node("prepare_feedback",  _prepare_feedback_node)
+    graph.add_node("save",              _save_node)
+
+    # equity → retention (sequential, retention reads equity output)
+    graph.add_edge(START,               "equity")
+    graph.add_edge("equity",            "retention")
+    # emotion is independent — starts from START in parallel with equity
+    graph.add_edge(START,               "emotion")
+    # generate waits for both retention and emotion to finish (fan-in)
+    graph.add_edge("retention",         "generate")
+    graph.add_edge("emotion",           "generate")
+    graph.add_edge("generate",          "audit")
+    graph.add_conditional_edges(
+        "audit",
+        _should_continue,
+        {"save": "save", "regenerate": "prepare_feedback"},
+    )
+    graph.add_edge("prepare_feedback",  "generate")
+    graph.add_edge("save",              END)
+
+    return graph.compile()
+
+
+_compiled_graph = _build_graph()
+
+
+# ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
 
-def run_pipeline(month: str) -> None:
+def run_pipeline(
+    month:       str,
+    company:     str = "Apple",
+    hr_csv:      str = _DEFAULT_HR_CSV,
+    reviews_csv: str = _DEFAULT_REVIEWS_CSV,
+) -> None:
     print(f"\n{'='*62}")
-    print(f"  Recommendation Pipeline  |  Month: {month}")
-    print(f"  Max audit attempts : {MAX_AUDIT_ATTEMPTS}")
+    print(f"  RetainIQ Pipeline  |  {company}  |  Month: {month}")
+    print(f"  HR CSV      : {hr_csv}")
+    print(f"  Reviews CSV : {reviews_csv}")
+    print(f"  Max audits  : {MAX_AUDIT_ATTEMPTS}")
     print(f"{'='*62}")
 
-    state: PipelineState = {
+    initial_state: PipelineState = {
         "month":           month,
+        "company":         company,
+        "hr_csv":          hr_csv,
+        "reviews_csv":     reviews_csv,
         "recommendations": [],
         "audit_result":    {},
         "audit_attempts":  0,
         "feedback":        "",
     }
 
-    # ── Generate ──────────────────────────────────────────────────────────
-    state = recommendation_agent.run(state)
-
-    while True:
-        # ── Audit ─────────────────────────────────────────────────────────
-        state = recommendation_audit_agent.run(state)
-
-        decision = _should_continue(state)
-
-        if decision == "save":
-            _save_node(state)
-            break
-
-        # ── Inject feedback and regenerate ────────────────────────────────
-        state["feedback"] = state["audit_result"]["revision_instructions"]
-        state = recommendation_agent.run(state)
+    _compiled_graph.invoke(initial_state)
 
     print(f"\n{'='*62}")
     print("  Pipeline complete.")
@@ -162,12 +273,20 @@ def run_pipeline(month: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Retention recommendation pipeline (generator + audit loop)"
+        description="Full retention pipeline: equity → retention → emotion → recommend → audit → save"
     )
-    parser.add_argument(
-        "--month",
-        default=datetime.now(timezone.utc).strftime("%Y-%m"),
-        help="Analysis month in YYYY-MM format (default: current month)",
-    )
+    parser.add_argument("--month",       default=datetime.now(timezone.utc).strftime("%Y-%m"),
+                        help="Analysis month YYYY-MM (default: current month)")
+    parser.add_argument("--company",     default="Apple",
+                        help="Company name (must match 'firm' column in reviews CSV)")
+    parser.add_argument("--hr-csv",      default=_DEFAULT_HR_CSV,
+                        help="Path to employee HR data CSV")
+    parser.add_argument("--reviews-csv", default=_DEFAULT_REVIEWS_CSV,
+                        help="Path to Glassdoor reviews CSV")
     args = parser.parse_args()
-    run_pipeline(month=args.month)
+    run_pipeline(
+        month=args.month,
+        company=args.company,
+        hr_csv=args.hr_csv,
+        reviews_csv=args.reviews_csv,
+    )

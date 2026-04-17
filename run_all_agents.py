@@ -182,29 +182,42 @@ def main() -> None:
     t0 = time.time()
     timings: dict[int, float] = {}
 
-    if run_all or args.stage == 1:
+    if run_all:
+        # Run the full LangGraph pipeline (all 4 stages in one compiled graph)
+        from agents.pipeline.pipeline import run_pipeline
         t = time.time()
-        run_stage_1(hr_csv=args.hr_csv)
-        timings[1] = time.time() - t
+        run_pipeline(
+            month=args.month,
+            company=args.company,
+            hr_csv=args.hr_csv,
+            reviews_csv=args.reviews_csv,
+        )
+        timings[0] = time.time() - t
+    else:
+        if args.stage == 1:
+            t = time.time()
+            run_stage_1(hr_csv=args.hr_csv)
+            timings[1] = time.time() - t
 
-    if run_all or args.stage == 2:
-        t = time.time()
-        run_stage_2(hr_csv=args.hr_csv)
-        timings[2] = time.time() - t
+        if args.stage == 2:
+            t = time.time()
+            run_stage_2(hr_csv=args.hr_csv)
+            timings[2] = time.time() - t
 
-    if run_all or args.stage == 3:
-        t = time.time()
-        run_stage_3(company=args.company, month=args.month, reviews_csv=args.reviews_csv)
-        timings[3] = time.time() - t
+        if args.stage == 3:
+            t = time.time()
+            run_stage_3(company=args.company, month=args.month, reviews_csv=args.reviews_csv)
+            timings[3] = time.time() - t
 
-    if run_all or args.stage == 4:
-        t = time.time()
-        run_stage_4(month=args.month)
-        timings[4] = time.time() - t
+        if args.stage == 4:
+            t = time.time()
+            run_stage_4(month=args.month)
+            timings[4] = time.time() - t
 
     _banner("Pipeline Complete")
     for n, elapsed in timings.items():
-        print(f"  Stage {n} : {elapsed:.1f}s")
+        label = "Full (LangGraph)" if n == 0 else f"Stage {n}"
+        print(f"  {label} : {elapsed:.1f}s")
     print(f"  Total   : {time.time() - t0:.1f}s")
     print()
 
