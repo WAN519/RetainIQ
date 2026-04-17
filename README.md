@@ -72,6 +72,31 @@ graph TD
     style Mongo_Final fill:#fff3e0,stroke:#e65100,stroke-width:3px
 ```
 
+### LangGraph Topology (`agents/pipeline/pipeline.py`)
+
+```
+START ──► equity ──► retention ──┐
+                                  ├──► generate ──► audit ──► [_should_continue]
+START ──► emotion ────────────────┘                                │           │
+                                                              "save"     "regenerate"
+                                                                 │              │
+                                                               save ◄── prepare_feedback
+                                                                 │
+                                                                END
+```
+
+| Node | Role |
+|------|------|
+| `equity` | LightGBM salary fair-value → MongoDB: Equity_Predictions |
+| `retention` | Cox survival + Claude HR insights → MongoDB: Risk |
+| `emotion` | NLP sentiment + Claude report → MongoDB: Emotion (runs in parallel with equity/retention) |
+| `generate` | Claude recommendation generator — fan-in from retention + emotion |
+| `audit` | Adversarial Claude critic — approves or returns revision instructions |
+| `prepare_feedback` | Injects revision instructions into state before regeneration |
+| `save` | Persist approved recommendations → MongoDB: retention_recommendations |
+
+The `audit → _should_continue` conditional edge loops back up to `generate` for up to **3 rounds** before force-saving.
+
 ---
 
 ## Models
@@ -142,7 +167,7 @@ graph TD
 
 ## Key Features
 
-- **Four-agent LangGraph system** — Equity Agent (LightGBM), Retention Agent (Cox survival model), Emotion Agent (NLP), and Recommendation Agent run as a LangGraph multi-agent workflow and write enriched results to MongoDB
+- **LangGraph multi-agent workflow** — two parallel tracks (Track A: Equity → Retention; Track B: Emotion) fan-in to a Recommendation → Adversarial Audit loop (up to 3 rounds) → Save; orchestrated by a compiled `StateGraph` in `agents/pipeline/pipeline.py`
 - **AI retention recommendations** — Claude API (tool-use agentic loop) generates per-employee retention plans; an adversarial Critic Agent audits quality and forces revision before saving
 - **Role-based access control** — HR sees the full workforce; managers see only their department's high/mid-risk employees
 - **Interactive web dashboard** — five-page single-page app (Home → Login → Portal → HR Dashboard / Manager View); HR view shows a ring gauge per employee (0–100% attrition score, labelled Critical ≥ 80 % / High ≥ 65 % / Moderate < 65 %), three summary tiles (Monitored employees, Critical-Risk count, Avg Market Gap), and an expandable detail panel (Compensation Plan, Risk Details, Key Concerns); Manager view shows a progress-bar risk indicator with AI-generated retention recommendations and urgency timeline per employee
@@ -159,7 +184,7 @@ RetentionAgent/
 │   ├── emotion/              # Agent 3: Glassdoor NLP sentiment analysis
 │   ├── recommendation/       # Claude API recommendation generator (tool-use)
 │   ├── recommendation_audit/ # Adversarial Claude audit agent
-│   └── pipeline/             # Orchestrator (generate → audit → save loop)
+│   └── pipeline/             # LangGraph StateGraph: equity→retention ‖ emotion → generate → audit → save
 ├── api/
 │   └── server.py             # FastAPI backend (login, employees endpoints)
 ├── scripts/
@@ -178,8 +203,8 @@ RetentionAgent/
 ├── retention-ui/             # React + Vite frontend
 │   └── src/
 │       └── App.jsx           # Single-page app (Home, Login, Portal, HR, Manager)
-├── main.py                   # LangGraph entry point
-├── run_all_agents.py         # Run all agents in sequence
+├── main.py                   # Legacy entry point (equity + retention only, no LangGraph)
+├── run_all_agents.py         # Full LangGraph pipeline entry point (all 4 stages)
 └── config.env                # Credentials (not committed)
 ```
 
@@ -214,17 +239,19 @@ pip install -r requirements.txt
 python scripts/MockData.py
 ```
 
-### 4. Run the ML pipeline
+### 4. Run the LangGraph pipeline
 
 ```bash
 # Sync BLS market salary benchmarks first
 python -m agents.equity.run
 
-# Run the full four-agent LangGraph workflow
-python main.py
+# Run the full LangGraph pipeline (all 4 stages: equity → retention ‖ emotion → recommend → audit → save)
+python run_all_agents.py --month 2026-04
 
-# Generate AI retention recommendations
-python -m agents.pipeline.pipeline --month 2026-04
+# Or run a single stage
+python run_all_agents.py --stage 1                     # equity only
+python run_all_agents.py --stage 3 --company Apple --month 2026-04  # emotion only
+python run_all_agents.py --stage 4 --month 2026-04     # recommend + audit only
 ```
 
 ### 5. Start the backend API
