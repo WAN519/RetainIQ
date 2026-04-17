@@ -129,7 +129,7 @@ graph TD
 
 ---
 
-### LLM — Claude claude-opus-4-6 (Anthropic)
+### LLM — claude-opus-4-6 (Anthropic)
 
 | Agent | Role |
 |-------|------|
@@ -142,7 +142,7 @@ graph TD
 
 ## Key Features
 
-- **Three-agent ML pipeline** — Equity Agent (LightGBM), Retention Agent (Cox survival model), and Emotion Agent (NLP) run sequentially and write enriched results to MongoDB
+- **Four-agent LangGraph system** — Equity Agent (LightGBM), Retention Agent (Cox survival model), Emotion Agent (NLP), and Recommendation Agent run as a LangGraph multi-agent workflow and write enriched results to MongoDB
 - **AI retention recommendations** — Claude API (tool-use agentic loop) generates per-employee retention plans; an adversarial Critic Agent audits quality and forces revision before saving
 - **Role-based access control** — HR sees the full workforce; managers see only their department's high/mid-risk employees
 - **Interactive web dashboard** — five-page single-page app (Home → Login → Portal → HR Dashboard / Manager View); HR view shows a ring gauge per employee (0–100% attrition score, labelled Critical ≥ 80 % / High ≥ 65 % / Moderate < 65 %), three summary tiles (Monitored employees, Critical-Risk count, Avg Market Gap), and an expandable detail panel (Compensation Plan, Risk Details, Key Concerns); Manager view shows a progress-bar risk indicator with AI-generated retention recommendations and urgency timeline per employee
@@ -159,7 +159,6 @@ RetentionAgent/
 │   ├── emotion/              # Agent 3: Glassdoor NLP sentiment analysis
 │   ├── recommendation/       # Claude API recommendation generator (tool-use)
 │   ├── recommendation_audit/ # Adversarial Claude audit agent
-│   ├── risk_audit/           # Risk score audit agent
 │   └── pipeline/             # Orchestrator (generate → audit → save loop)
 ├── api/
 │   └── server.py             # FastAPI backend (login, employees endpoints)
@@ -179,7 +178,7 @@ RetentionAgent/
 ├── retention-ui/             # React + Vite frontend
 │   └── src/
 │       └── App.jsx           # Single-page app (Home, Login, Portal, HR, Manager)
-├── main.py                   # Pipeline entry point
+├── main.py                   # LangGraph entry point
 ├── run_all_agents.py         # Run all agents in sequence
 └── config.env                # Credentials (not committed)
 ```
@@ -198,7 +197,7 @@ RetentionAgent/
 ### 1. Clone & configure
 
 ```bash
-git clone https://github.com/WAN519/6600.git
+git clone https://github.com/WAN519/RetainIQ.git
 cd RetentionAgent
 cp config.env.example config.env   # fill in your credentials
 ```
@@ -221,7 +220,7 @@ python scripts/MockData.py
 # Sync BLS market salary benchmarks first
 python -m agents.equity.run
 
-# Run the full three-agent pipeline
+# Run the full four-agent LangGraph workflow
 python main.py
 
 # Generate AI retention recommendations
@@ -254,7 +253,7 @@ npm run dev
 | Equity Agent | LightGBM salary regression model, BLS market benchmark integration (`agents/equity/`) |
 | Retention Agent | Cox Proportional Hazard survival model, salary risk scoring, Claude API HR analysis (`agents/retention/`) |
 | Emotion Agent | Sentence-Transformers (all-MiniLM-L6-v2) embedding, RoBERTa sentiment classification, Glassdoor NLP pipeline (`agents/emotion/`, `tools/emotion_tool.py`) |
-| Recommendation Pipeline | Claude tool-use recommendation generator + adversarial audit loop (`agents/recommendation/`, `agents/recommendation_audit/`, `agents/pipeline/`) |
+| Recommendation LangGraph | Claude tool-use recommendation generator + adversarial audit loop (`agents/recommendation/`, `agents/recommendation_audit/`, `agents/pipeline/`) |
 | MongoDB Schema Design | Collection design for Equity_Predictions, Risk, retention_recommendations |
 
 ### Member 2 — API & Data Infrastructure
