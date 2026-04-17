@@ -245,19 +245,6 @@ export default function App() {
           ))}
           {loginError && <div style={{ fontSize: 13, color: "#FF3B30", marginBottom: 12, padding: "10px 14px", background: "#FFF0EE", borderRadius: 10 }}>{loginError}</div>}
           <button onClick={login} style={{ width: "100%", padding: "14px 0", background: "#007AFF", color: "#fff", border: "none", borderRadius: 13, fontSize: 16, fontWeight: 600, cursor: "pointer", marginTop: 8, fontFamily: "inherit" }}>Continue</button>
-          <div style={{ marginTop: 20, background: "#F9F9FB", border: "1px solid #E5E5EA", borderRadius: 12, padding: "14px 18px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#8E8E93", textTransform: "uppercase", marginBottom: 10 }}>Demo Accounts</div>
-            {[
-              { role: "HR Admin",            cred: "hr_admin / hr2026"  },
-              { role: "Manager (Sales)",      cred: "mgr_lead / mgr2026" },
-              { role: "Manager (Eng)",        cred: "mgr_eng / mgr2026"  },
-            ].map(({ role, cred }) => (
-              <div key={cred} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #F2F2F7" }}>
-                <span style={{ fontSize: 12, color: "#8E8E93" }}>{role}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#1C1C1E", fontFamily: "monospace" }}>{cred}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </>
