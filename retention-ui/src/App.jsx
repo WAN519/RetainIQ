@@ -56,6 +56,7 @@ export default function App() {
   const [session, setSession]     = useState(null);   // {role, dept, username}
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading]     = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [dataError, setDataError] = useState("");
 
   // ---------- helpers ----------
@@ -93,6 +94,7 @@ export default function App() {
 
   const login = async () => {
     setLoginError("");
+    setLoginLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/login`, {
         method: "POST",
@@ -108,7 +110,9 @@ export default function App() {
       setSession(sess);
       setScreen("portal");
     } catch {
-      setLoginError("Cannot reach server. Make sure the API is running.");
+      setLoginError("Cannot reach server. Please wait — the server may be waking up (first load can take ~30s).");
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -238,13 +242,19 @@ export default function App() {
           {[{ f: "user", label: "Username", type: "text" }, { f: "pass", label: "Password", type: "password" }].map(({ f, label, type }) => (
             <div key={f} style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#636366", marginBottom: 7 }}>{label}</div>
-              <input type={type} value={loginForm[f]} onChange={e => setLoginForm(p => ({ ...p, [f]: e.target.value }))} onKeyDown={e => e.key === "Enter" && login()}
+              <input type={type} value={loginForm[f]} onChange={e => setLoginForm(p => ({ ...p, [f]: e.target.value }))} onKeyDown={e => e.key === "Enter" && !loginLoading && login()}
                 onFocus={e => e.target.style.borderColor = "#007AFF"} onBlur={e => e.target.style.borderColor = "#E5E5EA"}
                 style={{ width: "100%", padding: "13px 16px", borderRadius: 12, border: "1.5px solid #E5E5EA", fontSize: 15, outline: "none", fontFamily: "inherit", color: "#1C1C1E", transition: "border-color 0.15s" }}/>
             </div>
           ))}
           {loginError && <div style={{ fontSize: 13, color: "#FF3B30", marginBottom: 12, padding: "10px 14px", background: "#FFF0EE", borderRadius: 10 }}>{loginError}</div>}
-          <button onClick={login} style={{ width: "100%", padding: "14px 0", background: "#007AFF", color: "#fff", border: "none", borderRadius: 13, fontSize: 16, fontWeight: 600, cursor: "pointer", marginTop: 8, fontFamily: "inherit" }}>Continue</button>
+          <button onClick={login} disabled={loginLoading}
+            style={{ width: "100%", padding: "14px 0", background: loginLoading ? "#63AEFF" : "#007AFF", color: "#fff", border: "none", borderRadius: 13, fontSize: 16, fontWeight: 600, cursor: loginLoading ? "not-allowed" : "pointer", marginTop: 8, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "background 0.2s" }}>
+            {loginLoading && (
+              <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite", flexShrink: 0 }}/>
+            )}
+            {loginLoading ? "Signing in..." : "Continue"}
+          </button>
         </div>
       </div>
     </>
