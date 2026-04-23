@@ -1,0 +1,40 @@
+name: Run RetentionAgent Pipeline
+
+on:
+  schedule:
+    - cron: '0 2 1 * *'    # monthly: every 1st at 2 AM UTC
+    # - cron: '0 2 * * 1'  # weekly alternative: every Monday at 2 AM UTC
+  workflow_dispatch:         # allows manual trigger from GitHub UI
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        run: python run_all_agents.py --month $(date +%Y-%m)
+        env:
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_NAME: ${{ secrets.MONGODB_NAME }}
+          BLS_API_KEY: ${{ secrets.BLS_API_KEY }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_SSL_CA_CONTENT: ${{ secrets.DB_SSL_CA_CONTENT }}
+          DB_SSL_VERIFY_CERT: "True"
