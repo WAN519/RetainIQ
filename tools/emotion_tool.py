@@ -24,6 +24,7 @@ EmotionOrchestrator to aggregate and forward to the LLM report generator.
 
 Hardware: automatically uses Apple MPS acceleration when available, falls back to CPU.
 """
+from __future__ import annotations
 
 import torch
 import pandas as pd

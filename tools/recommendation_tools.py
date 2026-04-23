@@ -8,6 +8,7 @@ Tools:
   get_employee_profiles   — join Retention_Predictions + Emotion + employee_comment
   save_recommendations    — persist Claude's recommendations to MongoDB
 """
+from __future__ import annotations
 
 import os
 import json

@@ -24,6 +24,7 @@ Usage:
       --csv data/mock_reviews.csv \\
       --month 2026-04
 """
+from __future__ import annotations
 
 import copy
 import os
