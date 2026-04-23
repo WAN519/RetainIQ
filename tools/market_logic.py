@@ -15,6 +15,7 @@ BLS series IDs referenced:
     - Occupational wage series: OEUM* (from the Occupational Employment Statistics)
     - CPI series: CUUR0000SA0 (All Urban Consumers, All Items)
 """
+from __future__ import annotations
 
 import datetime
 import requests

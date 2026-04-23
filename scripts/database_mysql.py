@@ -21,6 +21,7 @@ Environment variables required (config.env):
     DB_SSL_CA_CONTENT    - PEM-encoded CA certificate content for TLS
     DB_SSL_VERIFY_CERT   - Whether to verify the server's TLS certificate
 """
+from __future__ import annotations
 
 import mysql.connector
 from mysql.connector import Error

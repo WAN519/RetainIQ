@@ -10,6 +10,7 @@ Environment variables required (config.env):
     MONGODB_NAME     - Target database name
     COLLECTION_NAME  - Collection storing market salary benchmarks
 """
+from __future__ import annotations
 
 import os
 import sys

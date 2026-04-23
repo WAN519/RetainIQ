@@ -10,6 +10,7 @@ LangGraph-compatible node:
 Batched approach: fetches all employee profiles directly, then sends to Claude in
 groups of BATCH_SIZE (50) to avoid token limit issues with large cohorts.
 """
+from __future__ import annotations
 
 import os
 import json
