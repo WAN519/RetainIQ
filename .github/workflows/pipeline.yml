@@ -30,6 +30,7 @@ jobs:
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           MONGODB_NAME: ${{ secrets.MONGODB_NAME }}
+          COLLECTION_NAME: "Salary"
           BLS_API_KEY: ${{ secrets.BLS_API_KEY }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_DATABASE: ${{ secrets.DB_DATABASE }}
