@@ -41,6 +41,7 @@ Salary risk tier thresholds:
     gap_pct  < 5% below market  → Low
     no market data available     → Unknown
 """
+from __future__ import annotations
 
 import os
 import sys

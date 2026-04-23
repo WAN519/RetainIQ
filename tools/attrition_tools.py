@@ -15,6 +15,7 @@ Tools:
   get_retention_risks    — Cox model risk scores + distribution from Retention_Predictions
   get_equity_gaps        — employees underpaid vs. 2026 market benchmarks
 """
+from __future__ import annotations
 
 import os
 import json
