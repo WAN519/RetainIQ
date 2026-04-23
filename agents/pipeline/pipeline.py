@@ -66,7 +66,7 @@ class PipelineState(TypedDict, total=False):
 # Stage nodes (1–3)
 # ---------------------------------------------------------------------------
 
-def _equity_node(state: PipelineState) -> PipelineState:
+def _equity_node(state: PipelineState) -> dict:
     """Stage 1 — LightGBM salary equity scoring → MongoDB: Equity_Predictions."""
     from agents.equity.equity_agent import EquityAgent
 
@@ -75,17 +75,17 @@ def _equity_node(state: PipelineState) -> PipelineState:
 
     if not Path(equity_model).exists():
         print(f"[equity] SKIP — model not found: {equity_model}")
-        return state
+        return {}
     if not Path(hr_csv).exists():
         print(f"[equity] SKIP — HR CSV not found: {hr_csv}")
-        return state
+        return {}
 
     EquityAgent(model_path=equity_model).run_analysis_pipeline(hr_csv)
     print("[equity] Complete → MongoDB: Equity_Predictions")
-    return state
+    return {}
 
 
-def _retention_node(state: PipelineState) -> PipelineState:
+def _retention_node(state: PipelineState) -> dict:
     """Stage 2 — Cox survival model + Claude HR insights → MongoDB: Risk."""
     from agents.retention.retention_agent import RetentionAgent
 
@@ -95,21 +95,21 @@ def _retention_node(state: PipelineState) -> PipelineState:
 
     if not Path(model_pkl).exists():
         print(f"[retention] SKIP — model not found: {model_pkl}")
-        return state
+        return {}
     if not Path(feature_json).exists():
         print(f"[retention] SKIP — features JSON not found: {feature_json}")
-        return state
+        return {}
     if not Path(hr_csv).exists():
         print(f"[retention] SKIP — HR CSV not found: {hr_csv}")
-        return state
+        return {}
 
     agent = RetentionAgent(model_path=model_pkl, feature_json_path=feature_json)
     docs  = agent.run(hr_csv)
     print(f"[retention] Complete — {len(docs)} records → MongoDB: Risk")
-    return state
+    return {}
 
 
-def _emotion_node(state: PipelineState) -> PipelineState:
+def _emotion_node(state: PipelineState) -> dict:
     """Stage 3 — NLP sentiment + Claude report → MongoDB: Emotion."""
     from agents.emotion.emotion_agent import run_emotion_agent
 
@@ -119,11 +119,11 @@ def _emotion_node(state: PipelineState) -> PipelineState:
 
     if not Path(reviews_csv).exists():
         print(f"[emotion] SKIP — reviews CSV not found: {reviews_csv}")
-        return state
+        return {}
 
     run_emotion_agent(company_name=company, csv_path=reviews_csv, month=month)
     print("[emotion] Complete → MongoDB: Emotion")
-    return state
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ def _save_node(state: PipelineState) -> PipelineState:
           f"→ collection='{collection_name}'  "
           f"audit_verdict={audit.get('verdict')}")
     client.close()
-    return state
+    return {}
 
 
 def _prepare_feedback_node(state: PipelineState) -> PipelineState:
