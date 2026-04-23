@@ -88,6 +88,8 @@ export default function App() {
 
   const enterView = (view) => {
     setSelected(null);
+    setEmployees([]);
+    setDataError("");
     setScreen(view);
     fetchEmployees(view, view === "manager" ? session?.dept : null);
   };
