@@ -166,13 +166,13 @@ def run(state: dict) -> dict:
     result = get_employee_profiles(month=month)
     if "error" in result:
         print(f"[RecommendationAgent] ERROR fetching profiles: {result['error']}")
-        return {**state, "recommendations": []}
+        return {"recommendations": []}
 
     profiles = result.get("profiles", [])
     print(f"[Tool] get_employee_profiles → {len(profiles)} profiles\n")
 
     if not profiles:
-        return {**state, "recommendations": []}
+        return {"recommendations": []}
 
     # 2. Batch process
     all_recommendations: list[dict] = []
@@ -189,4 +189,4 @@ def run(state: dict) -> dict:
             time.sleep(BATCH_SLEEP_SEC)
 
     print(f"[RecommendationAgent] Generated {len(all_recommendations)} recommendations.")
-    return {**state, "recommendations": all_recommendations}
+    return {"recommendations": all_recommendations}

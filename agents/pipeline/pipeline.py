@@ -163,7 +163,7 @@ def _save_node(state: PipelineState) -> PipelineState:
 def _prepare_feedback_node(state: PipelineState) -> PipelineState:
     """Extract revision instructions from audit result into the feedback field."""
     feedback = state.get("audit_result", {}).get("revision_instructions", "")
-    return {**state, "feedback": feedback}
+    return {"feedback": feedback}
 
 
 # ---------------------------------------------------------------------------
