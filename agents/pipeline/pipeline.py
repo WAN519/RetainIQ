@@ -26,7 +26,7 @@ import os
 import argparse
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
 import certifi
 from dotenv import load_dotenv
@@ -49,12 +49,17 @@ _MODEL_DIR           = _PROJECT_ROOT / "models"
 # State definition
 # ---------------------------------------------------------------------------
 
+def _keep(a, b):
+    """Reducer for read-only config fields: keep existing value on fan-in merge."""
+    return a if b is None else b
+
+
 class PipelineState(TypedDict, total=False):
-    # Config — passed through all nodes unchanged
-    month:           str
-    company:         str
-    hr_csv:          str
-    reviews_csv:     str
+    # Config — read-only after init; Annotated reducer prevents fan-in conflicts
+    month:           Annotated[str, _keep]
+    company:         Annotated[str, _keep]
+    hr_csv:          Annotated[str, _keep]
+    reviews_csv:     Annotated[str, _keep]
     # Recommendation pipeline state
     recommendations: list[dict]
     audit_result:    dict
@@ -165,7 +170,7 @@ def _save_node(state: PipelineState) -> PipelineState:
     return {}
 
 
-def _prepare_feedback_node(state: PipelineState) -> PipelineState:
+def _prepare_feedback_node(state: PipelineState) -> dict:
     """Extract revision instructions from audit result into the feedback field."""
     feedback = state.get("audit_result", {}).get("revision_instructions", "")
     return {"feedback": feedback}

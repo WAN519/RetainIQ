@@ -154,10 +154,17 @@ def run(state: dict) -> dict:
 
     response = client.messages.create(
         model="claude-opus-4-6",
-        max_tokens=4000,
+        max_tokens=8000,
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )
+
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError(
+            f"Audit: response truncated (hit max_tokens). "
+            f"Input tokens: {response.usage.input_tokens}. "
+            "Consider auditing fewer recommendations per batch."
+        )
 
     text_blocks = [b for b in response.content if b.type == "text"]
     if not text_blocks:
