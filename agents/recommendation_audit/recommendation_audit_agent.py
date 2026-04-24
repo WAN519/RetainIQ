@@ -174,4 +174,4 @@ def run(state: dict) -> dict:
           f"score={audit_result['quality_score']:.1f}  "
           f"flagged={len(audit_result['flagged'])}")
 
-    return {**state, "audit_result": audit_result, "audit_attempts": attempt}
+    return {"audit_result": audit_result, "audit_attempts": attempt}
