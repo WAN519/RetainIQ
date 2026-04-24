@@ -142,6 +142,7 @@ def _save_node(state: PipelineState) -> PipelineState:
     if collection_name not in db.list_collection_names():
         db.create_collection(collection_name)
 
+    month  = state.get("month", "")
     audit  = state.get("audit_result") or {}
     now    = datetime.now(timezone.utc).isoformat()
     docs   = [{
@@ -152,8 +153,12 @@ def _save_node(state: PipelineState) -> PipelineState:
         "created_at":     now,
     } for r in state["recommendations"]]
 
+    # Remove stale records for this month before inserting fresh ones
+    deleted = db[collection_name].delete_many({"month": month})
+    print(f"\n[Pipeline] Cleared {deleted.deleted_count} old records for month={month}")
+
     result = db[collection_name].insert_many(docs)
-    print(f"\n[Pipeline] Saved {len(result.inserted_ids)} recommendations "
+    print(f"[Pipeline] Saved {len(result.inserted_ids)} recommendations "
           f"→ collection='{collection_name}'  "
           f"audit_verdict={audit.get('verdict')}")
     client.close()
