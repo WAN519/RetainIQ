@@ -222,13 +222,17 @@ def _fetch_from_recommendations(db, target_role: str, dept: str | None,
     target_role: "HR" or "Management"
     dept:        filter employees by department (manager only), None = all
     """
-    # 1. Get top EMPLOYEE_LIMIT Risk docs by risk score
-    risk_docs = list(db["Risk"].find(
-        {"run_id": run_id},
-        {"_id": 0},
-        sort=[("cox_risk_pct", -1)],
-        limit=EMPLOYEE_LIMIT,
-    ))
+    # 1. Get latest Risk doc per employee across all runs
+    all_risk = list(db["Risk"].find({}, {"_id": 0}, sort=[("scoring_date", -1)]))
+    seen_ids: set = set()
+    risk_docs = []
+    for d in all_risk:
+        eid = d.get("employee_id")
+        if eid and eid not in seen_ids:
+            seen_ids.add(eid)
+            risk_docs.append(d)
+        if len(risk_docs) >= EMPLOYEE_LIMIT:
+            break
     risk_map  = {d["employee_id"]: d for d in risk_docs}
 
     # Build dept map  employee_id → dept
@@ -252,11 +256,13 @@ def _fetch_from_recommendations(db, target_role: str, dept: str | None,
     if not rec_docs:
         return []
 
-    # 4. Merge
+    # 4. Merge — skip if no matching Risk doc
     results = []
     for rec in rec_docs:
         eid      = rec.get("employee_id", "")
-        risk_doc = risk_map.get(eid, {})
+        risk_doc = risk_map.get(eid)
+        if not risk_doc:
+            continue
         results.append(_build_employee(risk_doc, rec))
 
     return results
